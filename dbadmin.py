@@ -409,12 +409,16 @@ def drawMenu(scr, menu):
     scr.addstr(1, 0, empty_string)
     scr.addstr(1, 0, menu)
     scr.addstr(2, 0, line)
+    scr.addstr(3, 0, "Enter the letter of the Menu Item that is shown in Upper Case")
+    scr.addstr(4, 0, "Press B to go back to main menu to access other menu options")
+    scr.addstr(5, 0, empty_string)
+
     
 def drawData(scr, data):
-    for num in range(3,22):
+    for num in range(6,22):
         scr.addstr(num, 0, empty_string)
         
-    i = 3
+    i = 6
     for item in data:
         scr.addstr(i, 0, item)
         i = i + 1
