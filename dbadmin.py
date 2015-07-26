@@ -7,7 +7,11 @@
 #    if there is MySQL server then you can see that functionality.
 
 from os import system
+import sys #for debugging
+sys.stdout = open('stdout.log', 'w')
+
 import curses, getpass, MySQLdb, npyscreen
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey
 
 #=======  Global Variables =======
 # Menu Decorations
@@ -44,6 +48,8 @@ class DbServer:
         self.db = ""            # User Selected Database
         self.table = ""         # User Selected Table
         self.tables = []        # List of tables in the User Selected Database
+        self.engine = None      # used for the connection sqlalchemy
+        self.db_string = ""     # used to hold the connection string between requests
     
     def db(self):
         """ User Selected Database """
@@ -58,13 +64,17 @@ class DbServer:
             login is a list or tuple that contains [host, username, password] """
         # TODO: The following is MySQL sample code for debugging
         #       Need to replace/add appropriate PostgreSQL
-        self.conn = MySQLdb.connect(host=login[0], user=login[1], passwd=login[2])
+        #self.conn = MySQLdb.connect(host=login[0], user=login[1], passwd=logien[2])
+        # doesn't specify host
+        # uses host to hold the dbname temporarily
+        self.db_string = "postgresql+psycopg2://{0}:{1}@/{2}".format(login[1], login[2], login[0])
+        self.engine = create_engine(self.db_string)
     
     def listDb(self):
         """ Request to provide list of Databases that are accessable by the logged user.  """
         # TODO: The following is MySQL sample code for debugging
         #       Need to replace/add appropriate PostgreSQL
-        if self.conn == None:
+        if self.engine == None:
             raise ValueError('Not connected to server')
         cur = self.conn.cursor()
         cur.execute("SHOW DATABASES")
@@ -94,15 +104,17 @@ class DbServer:
     def listTables(self):
         """ List all Tables in the User Selected Database 
             return value is a list or tuple """
-        if self.conn == None:
+        if self.engine == None:
             raise ValueError('Not connected to server')
-        cur = self.conn.cursor()
+        '''cur = self.conn.cursor()
         cur.execute("USE " + self.db)
         cur.execute("SHOW TABLES ")
-        data = cur.fetchall()
+        data = cur.fetchall()'''
+        metadata = MetaData()
+        metadata.reflect(self.engine)
         self.tables[:] = [] # Slice the list to remove all existing elements.
-        for row in data:
-            self.tables.append(row[0])
+        for t in metadata.sorted_tables:
+            self.tables.append(t.name)
         return self.tables
     
     def setTable(self, tableName):
@@ -114,17 +126,12 @@ class DbServer:
 
     def createTable(self, table_params):
         """ Create a new Table in the User Selected Database """
-        # TODO: Need to create a table in the User Selected Database with the
-        #       parameters supplied in the table_params data structure.
-        #       table_params format is as follows
-        #       (table_name, 
-        #        col_name, 
-        #       [0 or 1 or 2], # 0 = int, 1 = varchar, 2 = timestamp
-        #       size, 
-        #       [0 or 1, 0 or 1] # [PrimaryKey, AutoIncrement]       
-        #       )
-        #       
-        pass
+        metadata = MetaData()
+        table_name = table_params['table_name']
+        columns = table_params['cols']
+        table = Table(str(table_name), metadata,
+                      *(Column(name, eval(data_type)) for name, data_type, auto, pkey in columns))
+        metadata.create_all(self.engine)
         
     def removeTable(self, table_name):
         """ Remove Table from the User Selected Database 
@@ -331,20 +338,60 @@ def cb_Tables_r(scr):
         drawData(scr, ("", "Remove Table failed"))
     drawMenu(scr, sub_menu["Tables"])
     
-class tableForm(npyscreen.Popup):
+class tableNameForm(npyscreen.Popup):
     def create(self):
         self.name = self.add(npyscreen.TitleText, name='TableName')
+        self.num_cols = self.add(npyscreen.TitleText, name='NumCols')
+
+class tableColForm(npyscreen.Popup):
+    def create(self):
         self.colname = self.add(npyscreen.TitleText, name='ColName')
         self.coltype = self.add(npyscreen.TitleSelectOne, scroll_exit=True, max_height=3, name='ColType1', values = ['int', 'varchar', 'timestamp']) 
         self.size = self.add(npyscreen.TitleText, name='Size')
-        self.ai = self.add(npyscreen.TitleMultiSelect, value = [], name="Params", 
-                values = ["Primary Key", "Auto Increment"], scroll_exit=True)       
+        self.ai = self.add(npyscreen.TitleMultiSelect, value = [], name="Params", values = ["Primary Key", "Auto Increment"], scroll_exit=True)       
 
+
+'''Return Format: 
+{table_name:<table name>,cols: [<col1>:[col_name, col_type, auto, pkey], <col2>...]}
+'''
 def createTable(*args):
-    F = tableForm(name = "Create Table")
-    F.edit()    
-    return (F.name.value, F.colname.value, F.coltype.value, F.size.value, F.ai.value)
-    
+    F = tableNameForm(name = "Create Table")
+    F.edit()
+    params = {}
+    params['table_name'] = F.name.value
+    num_cols = F.num_cols.value
+    cols = []
+    for i in range(int(num_cols)):
+        F = tableColForm(name = "Create Columns")
+        F.edit()
+        col = []
+        col.append(F.colname.value)
+        col_type = F.coltype.value
+        print col_type
+        if col_type[0] == 0:
+            col_type = 'Integer'
+        elif col_type[0] == 1:
+            col_type = 'String'
+        elif col_type[0] == 2:
+            col_type = 'DateTime'
+        col.append(col_type)
+        ai = F.ai.value
+        print "ai: " + str(ai)
+        if ai[0] == 0:
+            auto = 'False'
+        else:
+            auto = 'True'
+        if ai[1] == 0:
+            pkey = 'False'
+        else:
+            pkey = 'True'
+        col.append(auto)
+        col.append(pkey)
+        cols.append(col)
+    params['cols'] = cols
+    print params #debugging
+    return params
+
 def cb_Tables_c(scr):
     global dbsrv
     table_params = npyscreen.wrapper_basic(createTable)
@@ -352,8 +399,8 @@ def cb_Tables_c(scr):
     curses.raw() 
     try:
         dbsrv.createTable(table_params)
-        drawStatus(scr, table_params[0] + "Created")
-        drawData(scr, ("",  "  "+table_params[0]+" Created"))
+        drawStatus(scr, table_params['table_name'] + "Created")
+        drawData(scr, ("",  "  "+table_params['table_name']+" Created"))
     except:
         drawStatus(scr, "Create Table Failed")
         drawData(scr, ("", "Create Table Failed"))
