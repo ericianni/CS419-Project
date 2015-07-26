@@ -362,6 +362,8 @@ def createTable(*args):
     num_cols = F.num_cols.value
     cols = []
     for i in range(int(num_cols)):
+        auto = False
+        pkey = False
         F = tableColForm(name = "Create Columns")
         F.edit()
         col = []
@@ -376,15 +378,11 @@ def createTable(*args):
             col_type = 'DateTime'
         col.append(col_type)
         ai = F.ai.value
-        print "ai: " + str(ai)
-        if ai[0] == 0:
-            auto = 'False'
-        else:
-            auto = 'True'
-        if ai[1] == 0:
-            pkey = 'False'
-        else:
-            pkey = 'True'
+        for each in ai:
+            if each == 0:
+                auto = True
+            elif each == 1:
+                pkey = True
         col.append(auto)
         col.append(pkey)
         cols.append(col)
