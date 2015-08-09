@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "dbadmin.py", line 522, in <module>
+    curses.wrapper(main)
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/curses/wrapper.py", line 43, in wrapper
+    return func(stdscr, *args, **kwds)
+  File "dbadmin.py", line 513, in main
+    cb_Login(scr)
+  File "dbadmin.py", line 206, in cb_Login
+    login = npyscreen.wrapper_basic(dbLogin)
+  File "/Users/admin/OSU/CS419/CS419-Project/npyscreen/npyssafewrapper.py", line 19, in wrapper_basic
+    return curses.wrapper(call_function)
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/curses/wrapper.py", line 43, in wrapper
+    return func(stdscr, *args, **kwds)
+  File "dbadmin.py", line 201, in dbLogin
+    F.edit()
+  File "/Users/admin/OSU/CS419/CS419-Project/npyscreen/fm_form_edit_loop.py", line 73, in edit
+    self.display()
+  File "/Users/admin/OSU/CS419/CS419-Project/npyscreen/fmForm.py", line 324, in display
+    self.refresh()
+  File "/Users/admin/OSU/CS419/CS419-Project/npyscreen/proto_fm_screen_area.py", line 138, in refresh
+    _my, _mx = self._max_physical()
+  File "/Users/admin/OSU/CS419/CS419-Project/npyscreen/proto_fm_screen_area.py", line 117, in _max_physical
+    mxy, mxx = struct.unpack('hh', fcntl.ioctl(sys.stderr.fileno(), termios.TIOCGWINSZ, 'xxxx'))
+IOError: [Errno 25] Inappropriate ioctl for device

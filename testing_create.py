@@ -33,15 +33,20 @@ def create_table(engine):
     table_name = raw_input("Enter table name: ")
     num_col = raw_input("Enter # of columns: ")
     metadata = MetaData()
-    cols = {}
+    cols = []
     for i in range(int(num_col)):
+        col = []
         key = raw_input("Enter Column "+str(i+1)+"'s name: ")
         value = input("Enter Column "+str(i+1)+"'s type: ")
-        cols[key] = value
-    
+        auto = raw_input("Enter Colum auto: ")
+        pkey = raw_input("Primary: ")
+        col.append(key)
+        col.append(value)
+        col.append(auto)
+        col.append(pkey)
+        cols.append(col)
     table = Table(str(table_name), metadata,
-                  Column('id', Integer, primary_key=True, autoincrement=True),
-                  *(Column(name, data_type) for name, data_type in cols.iteritems()))
+                  *(Column(name, data_type, autoincrement=auto, primary_key=pkey) for name, data_type,auto, pkey in cols))
     
     metadata.create_all(engine)
 
