@@ -29,6 +29,7 @@ def display_menu():
     print "3. Insert Into Table"
     print "4. Delete Table"
     print "5. Select All Data From Table"
+    print "6. Remove Row From Table"
     print "0. Exit"
 
 def create_table(engine):
@@ -63,6 +64,18 @@ def insert_into_table(engine):
     con = engine.connect()
     con.execute(ins)
 
+def remove_from_table(engine):
+    metadata = MetaData()
+    table_name = raw_input("Enter table name to edit: ")
+    table = Table(table_name, metadata, autoload=True, autoload_with=engine)
+    print [col.name for col in table.columns]
+    by_col = raw_input("Enter column to use for where clause: ")
+    value = raw_input("Enter value to be searched for: ")
+    where_clause = "table.c." + by_col
+    delete = table.delete().where(eval(where_clause) == value)
+    con = engine.connect()
+    con.execute(delete)
+
 # help from http://stackoverflow.com/questions/11233128/how-to-clean-the-database-dropping-all-records-using-sqlalchemy
 def delete_table(engine):
     metadata = MetaData()
@@ -91,6 +104,7 @@ menu_options = { 1 : display_tables,
                  3 : insert_into_table,
 		 4 : delete_table,
 		 5 : select_all,
+                 6 : remove_from_table,
                  0 : shutdown}
 
 def main():

@@ -139,7 +139,9 @@ class DbServer:
     def removeTable(self, table_name):
         """ Remove Table from the User Selected Database 
             table_name is of string type """
-        pass
+        metadata = MetaData()
+        table = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
+        table.drop(self.engine)
     
     def addColumn(self, column_info):
         """ Add a column to User Selected Table 
