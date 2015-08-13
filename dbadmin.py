@@ -19,18 +19,16 @@ empty_string = ' '*80	# Used for erasing the menu items
 line = '-'*80			# Used for menu underline
 
 # Menu strings
-main_menu = "Databases | Tables | dAta | Sql | Login | Help | Quit"
+main_menu = "Login DB | Tables | Data | Sql | Help | Quit"
 sub_menu = {
-    "Databases" : "Databases:  Select | Create | Remove | Back",
-	"Tables" : "Tables:  Select | Create | Remove | Addcolumn | Delcolumn | Back",
-    "dAta" : "dAta: Addrow | Delrow | Showall | Filter | Back"
+	"Tables" : "Tables:  Select | Create | Remove | Back",
+    "Data" : "Data: Addrow | Delrow | Showall | Filter | Back"
     }
 
 # Menu Navigation Helpers
 sub_menu_items = {
-    "Databases" : ('s', 's', 'c', 'C', 'r', 'R', 'b', 'B'),
 	"Tables" : ('s', 'S', 'c', 'C', 'r', 'R', 'a', 'A', 'd', 'D', 'b', 'B'),
-	"dAta" : ('a', 'A', 'd', 'D', 's', 'S', 'f', 'F', 'b', 'B')
+	"Data" : ('a', 'A', 'd', 'D', 's', 'S', 'f', 'F', 'b', 'B')
     }
 				  
 char_map = {
@@ -51,22 +49,17 @@ class DbServer:
         self.engine = None      # used for the connection sqlalchemy
         self.db_string = ""     # used to hold the connection string between requests
     
-    def db(self):
+    def getDb(self):
         """ User Selected Database """
         return self.db
     
-    def table(self):
+    def getTable(self):
         """ User Selected Table """
         return self.table
 
     def connect(self, login):
         """ Request to login to Database Server
-            login is a list or tuple that contains [host, username, password] """
-        # TODO: The following is MySQL sample code for debugging
-        #       Need to replace/add appropriate PostgreSQL
-        #self.conn = MySQLdb.connect(host=login[0], user=login[1], passwd=logien[2])
-        # doesn't specify host
-        # uses host to hold the dbname temporarily
+            login is a list or tuple that contains [database, username, password] """
         self.db_string = "postgresql+psycopg2://{0}:{1}@/{2}".format(login[1], login[2], login[0])
         self.engine = create_engine(self.db_string)
     
@@ -109,10 +102,6 @@ class DbServer:
             return value is a list or tuple """
         if self.engine == None:
             raise ValueError('Not connected to server')
-        '''cur = self.conn.cursor()
-        cur.execute("USE " + self.db)
-        cur.execute("SHOW TABLES ")
-        data = cur.fetchall()'''
         metadata = MetaData()
         metadata.reflect(self.engine)
         self.tables[:] = [] # Slice the list to remove all existing elements.
@@ -142,16 +131,6 @@ class DbServer:
         metadata = MetaData()
         table = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
         table.drop(self.engine)
-    
-    def addColumn(self, column_info):
-        """ Add a column to User Selected Table 
-            column_info structure needs to be defined  """
-        pass
-
-    def deleteColumn(self, column_info):
-        """ Delete a column from the User Selected Table 
-            column_info structure needs to be defined  """
-        pass
         
     def addRow(self, row_info):
         """ Add a row to the User Selected Table 
@@ -177,7 +156,55 @@ class DbServer:
         #       Results format should be list of lists
         #       [[col1_name, col2_name,...,coln_name], [val1, val2, ...., valn],[...], ....,[...]]
         pass
-        
+
+    def getColumnNames(self, table_name):
+        """ Table Column Names are needed for user prompting in add row functionality """
+        metadata = MetaData()
+        table_struct = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
+        cols = []
+        for col in table_struct.columns:
+            """ BUG: Here the autoincrement column name is assumed to be id.  This skipping of field 
+                should be based on actual autoincrement property.
+                WORKAROUND:  Name the autoincrement field in the table as id only 
+            """
+            if col.name == 'id':
+                continue
+            cols.append(str(col.name))
+        return cols
+
+    def addRow(self, table_name, cols_data):
+        """ Add a row to table with table_name """
+        metadata = MetaData()
+        table = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
+        params = {}
+        i = 0
+        for col in table.columns:
+            if col.name == 'id':
+                continue
+            params[col.name] = cols_data[i]
+            i = i + 1
+        #start debug
+        for p in params: 
+            print (p + ":" + params[p])
+        #end debug
+        ins = table.insert().values(params)
+        ins.compile().params
+        con = self.engine.connect()
+        con.execute(ins)
+
+    # help from http://stackoverflow.com/questions/636548/select-in-sqlalchemy
+    # getting error sqlalchemy.exc.ProgrammingError: (ProgrammingError) permission denied for relation - could be issue with 
+    # my Postgresql setup?
+    def showAll(self, table_name):
+        metadata = MetaData()
+        table = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
+        con = self.engine.connect()
+        query = table.select()
+        result = con.execute(query)
+        return result
+
+
+
 # Create an instance of DbServer
 dbsrv = DbServer()
 
@@ -196,8 +223,8 @@ def cb_Home(scr, msg):
 # =======  User Login Callback=======
 class dbLoginForm(npyscreen.Popup):
     def create(self):
-        self.dbHost = self.add(npyscreen.TitleText, name='Host Name: ')
-        self.dbName = self.add(npyscreen.TitleText, name='User Name: ')
+        self.dbHost = self.add(npyscreen.TitleText, name='Database: ')
+        self.dbName = self.add(npyscreen.TitleText, name='Username: ')
         self.dbPass = self.add(npyscreen.TitleText, name='Password: ')
 
 def dbLogin(screen, *args):
@@ -213,7 +240,8 @@ def cb_Login(scr):
     try:
         dbsrv.connect(login)
         drawStatus(scr, "DB server connected")
-        drawData(scr, ("", "DB server connected"))
+        drawData(scr, ("", "Login Successful", "DB server connected to: " + login[0]))
+        dbsrv.setDatabase(login[0])
     except:
         drawStatus(scr, "Login Failed")
         drawData(scr, ("", "Login to DB Server failed"))
@@ -252,7 +280,6 @@ def cb_Databases_s(scr):
         drawData(scr, ("", "Selecting Database failed"))
     drawMenu(scr, sub_menu["Databases"])
 
-# TODO:  Need to combine all similar dialog screens, work in progress.
 def createDatabase(screen, *args):
     F = selectDatabaseForm(name = "Create Database")
     F.edit()
@@ -409,8 +436,8 @@ def cb_Tables_c(scr):
         drawData(scr, ("", "Create Table Failed"))
     drawMenu(scr, sub_menu["Tables"])
     
-#=======  dAta Menu =======
-def cb_dAta(scr):
+#=======  Data Menu =======
+def cb_Data(scr):
     global dbsrv
     drawStatus(scr, "")
     try:
@@ -418,8 +445,58 @@ def cb_dAta(scr):
             "Delrow:  Delete an existing row from the selected table"))
     except:
         drawStatus(scr, "Error: No DB Server Connection")
-    showSubMenu(scr, "dAta")
-    
+    showSubMenu(scr, "Data")
+
+class addRowCell(npyscreen.Popup):
+    def create(self):
+        self.colname = self.add(npyscreen.TitleText, name='Enter Value')
+
+def cb_Data_a(scr):
+    global dbsrv
+    scr.clear()
+    curses.raw()
+    try:
+        table_name = dbsrv.getTable()
+        cols = dbsrv.getColumnNames(table_name)
+        cols_data = []
+        for c in cols:
+            F = addRowCell(name = c)
+            F.edit()
+            cols_data.append(F.colname.value)
+        dbsrv.addRow(table_name, cols_data)
+        drawStatus(scr, "Row Added")
+        drawData(scr, cols)
+    except:
+        drawStatus(scr, "Create Table Failed")
+        drawData(scr, ("", "Create Table Failed"))
+    drawMenu(scr, sub_menu["Data"])
+
+def cb_Data_s(scr):
+    global dbsrv
+    scr.clear()
+    curses.raw()
+    try:
+        table_name = dbsrv.getTable()
+        results = dbsrv.showAll(table_name)
+        #start debug
+        for row in results:
+            print row
+        #end debug
+        drawStatus(scr, "")
+        for row in results:
+            items = []
+            items.append("")
+            for item in row:
+                items.append(str(item))
+            print items
+            drawData(scr, items)
+    except:
+        drawStatus(scr, "ShowAll Failed")
+        drawData(scr, ("", "ShowAll Failed"))
+    drawMenu(scr, sub_menu["Data"])        
+
+
+
 #=======  SQL Menu =======
 class sqlForm(npyscreen.Popup):
     def create(self):
@@ -488,8 +565,9 @@ def showSubMenu(screen, menu_cmd):
         x = getInput(screen)
         if x not in [ord('b'), ord('B')]:
             try:
-                # HACK Alert: Did not find a way to convert ASCII char (represented as int) to str
-                #   so using the char_map.  But, this reduces the extra logic for upper case and lower case.
+                """ HACK Alert: Did not find a way to convert ASCII char (represented as int) to str
+                    so using the char_map.  However, this also reduces the extra logic 
+                    for upper case and lower case. """
                 m = "cb_" + menu_cmd + "_" + char_map[x]
                 eval(m)(screen) 
             except:
@@ -505,16 +583,14 @@ def main(scr, *args, **kwds):
         drawStatus(scr, msg)
         msg = ""
         x = getInput(scr)
-        if x in [ord('d'), ord('D')]:
-            cb_Databases(scr)
+        if x in [ord('l'), ord('L')]:
+            cb_Login(scr)
         elif x in [ord('t'), ord('T')]:
             cb_Tables(scr)
-        elif x in [ord('a'), ord('A')]:
-            cb_dAta(scr)
+        elif x in [ord('d'), ord('D')]:
+            cb_Data(scr)
         elif x in [ord('s'), ord('S')]:
             cb_SQL(scr)
-        elif x in [ord('l'), ord('L')]:
-            cb_Login(scr)
         elif x in [ord('h'), ord('H')]:
             cb_Help(scr)
         elif x in [ord('q'), ord('Q')]:
