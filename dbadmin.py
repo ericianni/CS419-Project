@@ -223,15 +223,20 @@ class dbLoginForm(npyscreen.Popup):
         self.dbHost = self.add(npyscreen.TitleText, name='Database: ')
         self.dbName = self.add(npyscreen.TitleText, name='Username: ')
         self.dbPass = self.add(npyscreen.TitleText, name='Password: ')
+        self.dbType = self.add(npyscreen.TitleSelectOne, scroll_exit=True, max_height=2, name='dbtype', values = ['PostgreSQL', 'MySQL'])
 
 def dbLogin(screen, *args):
     F = dbLoginForm(name = "Login")
     F.edit()
-    return (F.dbHost.value, F.dbName.value, F.dbPass.value)
+    dbtype = 'PostgreSQL'
+    if F.dbType.value[0] == 1:
+        dbtype = 'MySQL'
+    return (F.dbHost.value, F.dbName.value, F.dbPass.value, dbtype)
                 
 def cb_Login(scr):
     global dbsrv
     login = npyscreen.wrapper_basic(dbLogin)
+    print login
     scr.clear()
     curses.raw() 
     try:
