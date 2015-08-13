@@ -1,0 +1,5 @@
+Understanding the Menu - The first row of the menu shows the current DB and Table selected, and the status of a user command. If a bang (!) symbol appears in status, it alerts the user that the command was made in error. The second row of the Menu are the Menu options. This is a dynamic menu that changes to show submenu options when a Main Menu option is selected. To go back to Main Menu, press B for back.
+
+Selecting Menu Options - Menu options can be selected by entering first letter of menu command.
+
+Using the DBMS - First log in to the DB by selecting Login DB, and entering the database name, user, password, and choosing either postgreSQL or MySQL. Once the db is selected, enter T for Tables to see the tables in the database. Select a Table by entering S to access the data in that table. To change the selected table, go back to the Tables submenu and select a different Table. Joins and queries can be made via the SQL main menu option. Press Q to Quit.

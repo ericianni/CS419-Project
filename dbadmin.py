@@ -12,6 +12,7 @@ sys.stdout = open('stdout.log', 'w')
 
 import curses, getpass, MySQLdb, npyscreen, sys
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, ForeignKey
+from tabulate import tabulate
 
 #=======  Global Variables =======
 # Menu Decorations
@@ -483,19 +484,17 @@ def cb_Data_s(scr):
 
         first_row = dbsrv.getColumnNames(table_name, True)
         rows = []
-        rows.append(" ")
-        t = ""
-        for f in first_row:
-            t = t + f + ", "
-        rows.append(t)
         for row in results:
-            r = ""
+            r = []
             for col in row:
-                print col
-                r = r + str(col) + ", "
+                r.append(col)
             rows.append(r)
-        print(rows)
-        drawData(scr, rows)
+        fp = open('outfile', 'w')
+        print >>fp, tabulate(rows, headers=first_row)
+        fp.close()
+        with open('outfile') as f:
+            content = f.readlines()
+        drawData(scr, content)
     except:
         drawStatus(scr, "ShowAll Failed")
         drawData(scr, ("", "ShowAll Failed"))
