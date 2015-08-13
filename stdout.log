@@ -1,2 +1,10 @@
+class size:11
+csn:123
+class name:players
+(123, u'players', 11)
 [0]
-{'table_name': 'tbdeleted', 'cols': [['int', 'Integer', True, True]]}
+[1]
+{'table_name': 'people', 'cols': [['id', 'Integer', True, True], ['name', 'String', False, False]]}
+name:John Smith
+name:Richard Pryor
+name:Jeff Long

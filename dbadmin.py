@@ -132,20 +132,6 @@ class DbServer:
         table = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
         table.drop(self.engine)
         
-    def addRow(self, row_info):
-        """ Add a row to the User Selected Table 
-            row_info structure needs to be defined """
-        pass
-        
-    def deleteRow(self, row_info):
-        """ Delete a row to the User Selected Table 
-            row_info structure needs to be defined  """
-        pass
-    
-    def showAll(self):
-        """ Show all the records of the User Selected Table """
-        pass
-        
     def filter(self, filter_params):
         """ Filter records of the User Selected Table based on filter_params 
             filter_params structure needs to be defined  """
@@ -191,6 +177,17 @@ class DbServer:
         ins.compile().params
         con = self.engine.connect()
         con.execute(ins)
+
+    def deleteRow(self, table_name, row_search_field, row_search_field_value):
+        """ Delete a row to the User Selected Table 
+            row_info structure needs to be defined  """
+        metadata = MetaData()
+        table = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
+        where_clause = "table.c." + row_search_field
+        delete = table.delete().where(eval(where_clause) == row_search_field_value)
+        con = self.engine.connect()
+        con.execute(delete)
+        
 
     # help from http://stackoverflow.com/questions/636548/select-in-sqlalchemy
     # getting error sqlalchemy.exc.ProgrammingError: (ProgrammingError) permission denied for relation - could be issue with 
@@ -467,8 +464,8 @@ def cb_Data_a(scr):
         drawStatus(scr, "Row Added")
         drawData(scr, cols)
     except:
-        drawStatus(scr, "Create Table Failed")
-        drawData(scr, ("", "Create Table Failed"))
+        drawStatus(scr, "Add Row Failed")
+        drawData(scr, ("", "Add Row Failed"))
     drawMenu(scr, sub_menu["Data"])
 
 def cb_Data_s(scr):
@@ -484,18 +481,31 @@ def cb_Data_s(scr):
         #end debug
         drawStatus(scr, "")
         for row in results:
-            items = []
-            items.append("")
-            for item in row:
-                items.append(str(item))
-            print items
-            drawData(scr, items)
+            drawData(scr, str(row))
     except:
         drawStatus(scr, "ShowAll Failed")
         drawData(scr, ("", "ShowAll Failed"))
     drawMenu(scr, sub_menu["Data"])        
 
+class addDeleteCell(npyscreen.Popup):
+    def create(self):
+        self.colname = self.add(npyscreen.TitleText, name='Column:')
+        self.colvalue = self.add(npyscreen.TitleText, name='Value:')
 
+def cb_Data_d(scr):
+    global dbsrv
+    scr.clear()
+    curses.raw()
+    try:
+        table_name = dbsrv.getTable()
+        F = addDeleteCell(name="Enter Information")
+        F.edit()
+        dbsrv.deleteRow(table_name, F.colname.value, F.colvalue.value)
+        drawStatus(scr, "Row Deleted")
+    except:
+        drawStatus(scr, "Delete Row Failed")
+        drawData(scr, ("", "Delete Row Failed"))
+    drawMenu(scr, sub_menu["Data"])
 
 #=======  SQL Menu =======
 class sqlForm(npyscreen.Popup):
