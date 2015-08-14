@@ -12,7 +12,14 @@ def init_sql():
     db_name = raw_input("Enter database name: ")
     usr = raw_input('Enter username: ')
     pw = getpass('Enter password: ')
-    db_string = "postgresql+psycopg2://{0}:{1}@/{2}".format(usr, pw, db_name)
+    choice = raw_input('Pick 1) MySql 2) Postgresql: ')
+    if choice == str(1):
+        db_string = "mysql+mysqldb://{0}:{1}@/{2}".format(usr, pw, db_name)
+    elif choice == str(2):
+        db_string = "postgresql+psycopg2://{0}:{1}@/{2}".format(usr, pw, db_name)
+    else:
+        print "Not a valid Choice!"
+        exit(1)
     print db_string
     engine = create_engine(db_string)
     return engine
@@ -30,8 +37,17 @@ def display_menu():
     print "4. Delete Table"
     print "5. Select All Data From Table"
     print "6. Remove Row From Table"
+    print "7. Run SQL Command"
     print "0. Exit"
 
+def run_sql(engine):
+    sql = raw_input("Enter SQL command: ")
+    con = engine.connect()
+    result = con.engine.execute(sql)
+    for row in result:
+        for col in row:
+            print col
+    
 def create_table(engine):
     table_name = raw_input("Enter table name: ")
     num_col = raw_input("Enter # of columns: ")
@@ -44,7 +60,7 @@ def create_table(engine):
     
     table = Table(str(table_name), metadata,
                   Column('id', Integer, primary_key=True, autoincrement=True),
-                  *(Column(name, data_type) for name, data_type in cols.iteritems()))
+                  *(Column(name, data_type(20)) for name, data_type in cols.iteritems()))
     
     metadata.create_all(engine)
 
@@ -105,6 +121,7 @@ menu_options = { 1 : display_tables,
 		 4 : delete_table,
 		 5 : select_all,
                  6 : remove_from_table,
+                 7 : run_sql,
                  0 : shutdown}
 
 def main():
@@ -117,5 +134,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
