@@ -143,7 +143,7 @@ class DbServer:
         #       [[col1_name, col2_name,...,coln_name], [val1, val2, ...., valn],[...], ....,[...]]
         pass
 
-    def getColumnNames(self, table_name):
+    def getColumnNames(self, table_name, id_field=False):
         """ Table Column Names are needed for user prompting in add row functionality """
         metadata = MetaData()
         table_struct = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
@@ -153,7 +153,7 @@ class DbServer:
                 should be based on actual autoincrement property.
                 WORKAROUND:  Name the autoincrement field in the table as id only 
             """
-            if col.name == 'id':
+            if col.name == 'id' and id_field == False:
                 continue
             cols.append(str(col.name))
         return cols
@@ -226,15 +226,20 @@ class dbLoginForm(npyscreen.Popup):
         self.dbHost = self.add(npyscreen.TitleText, name='Database: ')
         self.dbName = self.add(npyscreen.TitleText, name='Username: ')
         self.dbPass = self.add(npyscreen.TitleText, name='Password: ')
+        self.dbType = self.add(npyscreen.TitleSelectOne, scroll_exit=True, max_height=2, name='dbtype', values = ['PostgreSQL', 'MySQL'])
 
 def dbLogin(screen, *args):
     F = dbLoginForm(name = "Login")
     F.edit()
-    return (F.dbHost.value, F.dbName.value, F.dbPass.value)
+    dbtype = 'PostgreSQL'
+    if F.dbType.value[0] == 1:
+        dbtype = 'MySQL'
+    return (F.dbHost.value, F.dbName.value, F.dbPass.value, dbtype)
                 
 def cb_Login(scr):
     global dbsrv
     login = npyscreen.wrapper_basic(dbLogin)
+    print login
     scr.clear()
     curses.raw() 
     try:
@@ -382,7 +387,6 @@ class tableColForm(npyscreen.Popup):
         self.size = self.add(npyscreen.TitleText, name='Size')
         self.ai = self.add(npyscreen.TitleMultiSelect, value = [], name="Params", values = ["Primary Key", "Auto Increment"], scroll_exit=True)       
 
-
 '''Return Format: 
 {table_name:<table name>,cols: [<col1>:[col_name, col_type, auto, pkey], <col2>...]}
 '''
@@ -478,13 +482,23 @@ def cb_Data_s(scr):
     try:
         table_name = dbsrv.getTable()
         results = dbsrv.showAll(table_name)
-        #start debug
-        for row in results:
-            print row
-        #end debug
         drawStatus(scr, "")
+
+        first_row = dbsrv.getColumnNames(table_name, True)
+        rows = []
+        rows.append(" ")
+        t = ""
+        for f in first_row:
+            t = t + f + ", "
+        rows.append(t)
         for row in results:
-            drawData(scr, str(row))
+            r = ""
+            for col in row:
+                print col
+                r = r + str(col) + ", "
+            rows.append(r)
+        print(rows)
+        drawData(scr, rows)
     except:
         drawStatus(scr, "ShowAll Failed")
         drawData(scr, ("", "ShowAll Failed"))
@@ -513,7 +527,7 @@ def cb_Data_d(scr):
 #=======  SQL Menu =======
 class sqlForm(npyscreen.Popup):
     def create(self):
-        self.sql= self.add(npyscreen.MultiLineEdit)               
+        self.sql = self.add(npyscreen.MultiLineEdit)               
 
 def runSQL(*args):
     F = sqlForm(name = "SQL")
@@ -553,7 +567,6 @@ def drawMenu(scr, menu):
     scr.addstr(4, 0, "Press B to go back to main menu to access other menu options")
     scr.addstr(5, 0, empty_string)
 
-    
 def drawData(scr, data):
     for num in range(6,22):
         scr.addstr(num, 0, empty_string)
