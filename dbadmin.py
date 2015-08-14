@@ -6,6 +6,7 @@
 # 2. Some of the database functions work with MySQL.  So
 #    if there is MySQL server then you can see that functionality.
 
+#=======  Imports =======
 from os import system
 import sys #for debugging
 sys.stdout = open('stdout.log', 'w')
@@ -31,15 +32,14 @@ sub_menu_items = {
 	"Tables" : ('s', 'S', 'c', 'C', 'r', 'R', 'a', 'A', 'd', 'D', 'b', 'B'),
 	"Data" : ('a', 'A', 'd', 'D', 's', 'S', 'b', 'B')
     }
-				  
+
+# Menu Char Map			  
 char_map = {
     115:"s", 83:"s", 99:"c", 67:"c", 100:"d", 68:"d", 
     82:"r", 114:"r", 65:'a', 97:'a', 70:'f', 102:'f'
     }
 
-# Database related 
-# TODO - Using MySQL for testing purposes, need to replace MySQL code with the 
-#           appropriate PostgreSQL code
+#=======  Database Functions ======= 
 class DbServer:
     def __init__(self):
         self.conn = None
@@ -66,8 +66,6 @@ class DbServer:
     
     def listDb(self):
         """ Request to provide list of Databases that are accessable by the logged user.  """
-        # TODO: The following is MySQL sample code for debugging
-        #       Need to replace/add appropriate PostgreSQL
         if self.engine == None:
             raise ValueError('Not connected to server')
         cur = self.conn.cursor()
@@ -112,10 +110,11 @@ class DbServer:
     
     def setTable(self, tableName):
         """ Set the active table to the User Selected Table """
-        # TODO:  Need to check if tableName really exists in the selected database before setting it.
-        #       if does not exist throw exception.
-        #       right now any string is selected as database - need to FIX this.
-        self.table = tableName
+        self.listTables()
+        if tableName in self.tables:
+            self.table = tableName
+        else:
+            raise ValueError('Table Not Found')
 
     def createTable(self, table_params):
         """ Create a new Table in the User Selected Database """
@@ -174,6 +173,7 @@ class DbServer:
     # getting error sqlalchemy.exc.ProgrammingError: (ProgrammingError) permission denied for relation - could be issue with 
     # my Postgresql setup?
     def showAll(self, table_name):
+        """ Show all records in a table """
         metadata = MetaData()
         table = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
         con = self.engine.connect()
@@ -182,10 +182,10 @@ class DbServer:
         return result
         
     def exec_sql(self, sql):
-        # TODO: Need to execute SQL statement.
-        #       Results format should be list of lists
-        #       [[col1_name, col2_name,...,coln_name], [val1, val2, ...., valn],[...], ....,[...]]
-        pass
+        """ Run an sql statment and return results """
+        con = self.engine.connect()
+        result = con.engine.execute(sql)
+        return result
 
 
 # Create an instance of DbServer
@@ -196,7 +196,7 @@ def cb_Home(scr, msg):
     scr.clear()
     drawStatus(scr, msg)
     drawMenu(scr, main_menu)
-    #TODO:  Enter the data that has to be displayed on the home screen as strings in the following tuple.
+    #Enter the data that has to be displayed on the home screen as strings in the following tuple.
     data = ("",
         "  Welcome to dbadmin", "", 
         "  Enter the letter of the Menu Item that is shown in Upper Case",
@@ -208,7 +208,7 @@ class dbLoginForm(npyscreen.Popup):
     def create(self):
         self.dbHost = self.add(npyscreen.TitleText, name='Database: ')
         self.dbName = self.add(npyscreen.TitleText, name='Username: ')
-        self.dbPass = self.add(npyscreen.TitleText, name='Password: ')
+        self.dbPass = self.add(npyscreen.TitlePassword, name='Password: ')
         self.dbType = self.add(npyscreen.TitleSelectOne, scroll_exit=True, max_height=2, name='dbtype', values = ['PostgreSQL', 'MySQL'])
 
 def dbLogin(screen, *args):
@@ -234,84 +234,31 @@ def cb_Login(scr):
         drawStatus(scr, "Login Failed")
         drawData(scr, ("", "Login to DB Server failed"))
     drawMenu(scr, main_menu)
-
-#=======  Databases Menu =======
-def cb_Databases(scr):
-    global dbsrv
-    drawStatus(scr, "")
-    try:
-        drawData(scr, dbsrv.listDb())
-    except:
-        drawStatus(scr, "Error: No DB Server Connection")
-    showSubMenu(scr, "Databases")
-
-class selectDatabaseForm(npyscreen.Popup):
-    def create(self):
-        self.database = self.add(npyscreen.TitleText, name='DB Name: ')
-        
-def selectDatabase(screen, *args):
-    F = selectDatabaseForm(name = "Select Database")
-    F.edit()
-    return F.database.value
-    
-def cb_Databases_s(scr):
-    global dbsrv, sub_menu
-    dbName = npyscreen.wrapper_basic(selectDatabase)
-    scr.clear()
-    curses.raw()
-    try:
-        dbsrv.setDatabase(dbName)
-        drawStatus(scr, "Database set to " + dbName)
-        drawData(scr, ("",  "  "+dbName+" Selected"))
-    except:
-        drawStatus(scr, "Select Database Failed")
-        drawData(scr, ("", "Selecting Database failed"))
-    drawMenu(scr, sub_menu["Databases"])
-
-def createDatabase(screen, *args):
-    F = selectDatabaseForm(name = "Create Database")
-    F.edit()
-    return F.database.value
-    
-def cb_Databases_c(scr):
-    global dbsrv
-    dbName = npyscreen.wrapper_basic(createDatabase)
-    scr.clear()
-    curses.raw()
-    try:
-        dbsrv.createDatabase(dbName)
-        drawStatus(scr, dbName + "created")
-        drawData(scr, ("",  "  "+dbName+" created"))
-    except:
-        drawStatus(scr, "Database Creation Failed")
-        drawData(scr, ("", "Database Creation Failed"))
-    drawMenu(scr, sub_menu["Databases"])
-
-def removeDatabase(screen, *args):
-    F = selectDatabaseForm(name = "Remove Database")
-    F.edit()
-    return F.database.value
-    
-def cb_Databases_r(scr):
-    global dbsrv
-    dbName = npyscreen.wrapper_basic(removeDatabase)
-    scr.clear()
-    curses.raw()
-    try:
-        dbsrv.dropDatabase(dbName)
-        drawStatus(scr, dbName + "deleted")
-        drawData(scr, ("",  "  "+dbName+" deleted"))
-    except:
-        drawStatus(scr, "Database Deletion Failed")
-        drawData(scr, ("", "Database Deletion Failed"))
-    drawMenu(scr, sub_menu["Databases"])
         
 #=======  Tables Menu =======
 def cb_Tables(scr):
     global dbsrv
     drawStatus(scr, "")
     try:
-        drawData(scr, dbsrv.listTables())
+        table_names = dbsrv.listTables()
+        """ table_names are formatted as a tuple of all table names, however the python tabulate function
+            expects the input as array of arrys.  So the following code for array reformatting """
+        titems = []
+        for t in table_names:
+            r = []
+            r.append(t)
+            titems.append(r)
+        """ Tabulate output can only be printed but not piped to a npyscreen window.  So we write it to a 
+            file and read them back into a buffer that will be presented to npyscreen for screen display """
+        fp = open('outfile', 'w')
+        print >>fp, tabulate(titems)
+        fp.close()
+        with open('outfile') as f:
+            content = f.readlines()
+        F = npyscreen.Form(name="Results",)
+        t = F.add(npyscreen.Pager, values=content)
+        F.edit()
+        #drawData(scr, dbsrv.listTables())
     except:
         drawStatus(scr, "Error: No DB Selected")
     showSubMenu(scr, "Tables")
@@ -467,18 +414,24 @@ def cb_Data_s(scr):
         results = dbsrv.showAll(table_name)
 
         first_row = dbsrv.getColumnNames(table_name)
+        """ Reformat results into a format needed for python tabulate fucntion """
         rows = []
         for row in results:
             r = []
             for col in row:
                 r.append(col)
             rows.append(r)
+        """ Tabulate output can only be printed but not piped to a npyscreen window.  So we write it to a 
+            file and read them back into a buffer that will be presented to npyscreen for screen display """
         fp = open('outfile', 'w')
         print >>fp, tabulate(rows, headers=first_row)
         fp.close()
         with open('outfile') as f:
             content = f.readlines()
-        drawData(scr, content)
+        F = npyscreen.Form(name="Results",)
+        t = F.add(npyscreen.Pager, values=content)
+        F.edit()
+        #drawData(scr, content)
         drawStatus(scr, "")
     except:
         drawStatus(scr, "ShowAll Failed")
@@ -522,21 +475,24 @@ def cb_SQL(scr):
     curses.raw() 
     try:
         sql_results = dbsrv.exec_sql(sql)
-        table_name = dbsrv.getTable()
-        first_row = dbsrv.getColumnNames(table_name, True)
-
+        """ Reformat results into a format needed for python tabulate fucntion """
         rows = []
         for row in sql_results:
             r = []
             for col in row:
                 r.append(col)
             rows.append(r)
+        """ Tabulate output can only be printed but not piped to a npyscreen window.  So we write it to a 
+            file and read them back into a buffer that will be presented to npyscreen for screen display """
         fp = open('outfile', 'w')
-        print >>fp, tabulate(rows, headers=first_row)
+        print >>fp, tabulate(rows)
         fp.close()
         with open('outfile') as f:
             content = f.readlines()
-        drawData(scr, content)
+        F = npyscreen.Form(name="Results",)
+        t = F.add(npyscreen.Pager, values=content)
+        F.edit()
+        #drawData(scr, content)
         drawStatus(scr, "")
     except:
         drawStatus(scr, "SQL Failed")
@@ -545,7 +501,17 @@ def cb_SQL(scr):
     
 #=======  Help Menu =======
 def cb_Help(scr):
-    drawData(scr,("", "Enter Help Text here"))
+    #Enter the data that has to be displayed on the help screen as strings in the following tuple.
+    data = (
+        "  Help:", "", 
+        "  L - Login into the Database Server",
+        "  T - Goto Table Menu",
+        "  D - Goto Data Menu",
+        "  S - Execute an SQL statment",
+        "  H - This Screen",
+        "  Q - Quit the program",
+        "  ***  Enter More Help Text here ***")
+    drawData(scr,data)
     
 # =======  Draw Operations =======
 def drawStatus(scr, msg):
