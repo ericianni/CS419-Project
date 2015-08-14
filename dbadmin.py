@@ -198,6 +198,9 @@ class DbServer:
         con = self.engine.connect()
         query = table.select()
         result = con.execute(query)
+        for row in result.fetchall():
+            for col in table.columns:
+                print row[str(col.name)]
         return result
 
 

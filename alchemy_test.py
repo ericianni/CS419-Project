@@ -12,8 +12,14 @@ def init_sql():
     db_name = raw_input("Enter database name: ")
     usr = raw_input('Enter username: ')
     pw = getpass('Enter password: ')
-    #db_string = "postgresql+psycopg2://{0}:{1}@/{2}".format(usr, pw, db_name)
-    db_string = "mysql+mysqldb://{0}:{1}@/{2}".format(usr, pw, db_name)
+    choice = raw_input('Pick 1) MySql 2) Postgresql: ')
+    if choice == str(1):
+        db_string = "mysql+mysqldb://{0}:{1}@/{2}".format(usr, pw, db_name)
+    elif choice == str(2):
+        db_string = "postgresql+psycopg2://{0}:{1}@/{2}".format(usr, pw, db_name)
+    else:
+        print "Not a valid Choice!"
+        exit(1)
     print db_string
     engine = create_engine(db_string)
     return engine
@@ -37,7 +43,10 @@ def display_menu():
 def run_sql(engine):
     sql = raw_input("Enter SQL command: ")
     con = engine.connect()
-    con.engine.execute(sql)
+    result = con.engine.execute(sql)
+    for row in result:
+        for col in row:
+            print col
     
 def create_table(engine):
     table_name = raw_input("Enter table name: ")
@@ -125,5 +134,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
