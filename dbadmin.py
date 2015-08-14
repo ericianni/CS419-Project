@@ -61,7 +61,10 @@ class DbServer:
     def connect(self, login):
         """ Request to login to Database Server
             login is a list or tuple that contains [database, username, password] """
-        self.db_string = "postgresql+psycopg2://{0}:{1}@/{2}".format(login[1], login[2], login[0])
+        if login[3] == 'PostgreSQL':
+            self.db_string = "postgresql+psycopg2://{0}:{1}@/{2}".format(login[1], login[2], login[0])
+        if login[3] == 'MySQL':
+            self.db_string = "mysql+mysqldb://{0}:{1}@/{2}".format(login[1], login[2], login[0])
         self.engine = create_engine(self.db_string)
     
     def listDb(self):
@@ -148,6 +151,10 @@ class DbServer:
         params = {}
         i = 0
         for col in table.columns:
+            if cols_data[i] == "":
+                print cols_data[i]
+                i += 1
+                continue
             params[col.name] = cols_data[i]
             i = i + 1
         #start debug
