@@ -514,8 +514,7 @@ def cb_Help(scr):
         "  D - Goto Data Menu",
         "  S - Execute an SQL statment",
         "  H - This Screen",
-        "  Q - Quit the program",
-        "  ***  Enter More Help Text here ***")
+        "  Q - Quit the program")
     drawData(scr,data)
     
 # =======  Draw Operations =======
