@@ -23,13 +23,13 @@ line = '-'*80			# Used for menu underline
 main_menu = "Login DB | Tables | Data | Sql | Help | Quit"
 sub_menu = {
 	"Tables" : "Tables:  Select | Create | Remove | Back",
-    "Data" : "Data: Addrow | Delrow | Showall | Filter | Back"
+    "Data" : "Data: Addrow | Delrow | Showall | Back"
     }
 
 # Menu Navigation Helpers
 sub_menu_items = {
 	"Tables" : ('s', 'S', 'c', 'C', 'r', 'R', 'a', 'A', 'd', 'D', 'b', 'B'),
-	"Data" : ('a', 'A', 'd', 'D', 's', 'S', 'f', 'F', 'b', 'B')
+	"Data" : ('a', 'A', 'd', 'D', 's', 'S', 'b', 'B')
     }
 				  
 char_map = {
@@ -132,30 +132,13 @@ class DbServer:
         metadata = MetaData()
         table = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
         table.drop(self.engine)
-        
-    def filter(self, filter_params):
-        """ Filter records of the User Selected Table based on filter_params 
-            filter_params structure needs to be defined  """
-        pass
-        
-    def exec_sql(self, sql):
-        # TODO: Need to execute SQL statement.
-        #       Results format should be list of lists
-        #       [[col1_name, col2_name,...,coln_name], [val1, val2, ...., valn],[...], ....,[...]]
-        pass
 
-    def getColumnNames(self, table_name, id_field=False):
+    def getColumnNames(self, table_name):
         """ Table Column Names are needed for user prompting in add row functionality """
         metadata = MetaData()
         table_struct = Table(table_name, metadata, autoload=True, autoload_with=self.engine)
         cols = []
         for col in table_struct.columns:
-            """ BUG: Here the autoincrement column name is assumed to be id.  This skipping of field 
-                should be based on actual autoincrement property.
-                WORKAROUND:  Name the autoincrement field in the table as id only 
-            """
-            if col.name == 'id' and id_field == False:
-                continue
             cols.append(str(col.name))
         return cols
 
@@ -166,8 +149,6 @@ class DbServer:
         params = {}
         i = 0
         for col in table.columns:
-            if col.name == 'id':
-                continue
             params[col.name] = cols_data[i]
             i = i + 1
         #start debug
@@ -189,7 +170,6 @@ class DbServer:
         con = self.engine.connect()
         con.execute(delete)
         
-
     # help from http://stackoverflow.com/questions/636548/select-in-sqlalchemy
     # getting error sqlalchemy.exc.ProgrammingError: (ProgrammingError) permission denied for relation - could be issue with 
     # my Postgresql setup?
@@ -200,7 +180,12 @@ class DbServer:
         query = table.select()
         result = con.execute(query)
         return result
-
+        
+    def exec_sql(self, sql):
+        # TODO: Need to execute SQL statement.
+        #       Results format should be list of lists
+        #       [[col1_name, col2_name,...,coln_name], [val1, val2, ...., valn],[...], ....,[...]]
+        pass
 
 
 # Create an instance of DbServer
@@ -467,7 +452,7 @@ def cb_Data_a(scr):
             cols_data.append(F.colname.value)
         dbsrv.addRow(table_name, cols_data)
         drawStatus(scr, "Row Added")
-        drawData(scr, cols)
+        drawData(scr, (" ", "Row Added"))
     except:
         drawStatus(scr, "Add Row Failed")
         drawData(scr, ("", "Add Row Failed"))
@@ -480,9 +465,8 @@ def cb_Data_s(scr):
     try:
         table_name = dbsrv.getTable()
         results = dbsrv.showAll(table_name)
-        drawStatus(scr, "")
 
-        first_row = dbsrv.getColumnNames(table_name, True)
+        first_row = dbsrv.getColumnNames(table_name)
         rows = []
         for row in results:
             r = []
@@ -495,12 +479,13 @@ def cb_Data_s(scr):
         with open('outfile') as f:
             content = f.readlines()
         drawData(scr, content)
+        drawStatus(scr, "")
     except:
         drawStatus(scr, "ShowAll Failed")
         drawData(scr, ("", "ShowAll Failed"))
     drawMenu(scr, sub_menu["Data"])        
 
-class addDeleteCell(npyscreen.Popup):
+class addDeleteRow(npyscreen.Popup):
     def create(self):
         self.colname = self.add(npyscreen.TitleText, name='Column:')
         self.colvalue = self.add(npyscreen.TitleText, name='Value:')
@@ -511,7 +496,7 @@ def cb_Data_d(scr):
     curses.raw()
     try:
         table_name = dbsrv.getTable()
-        F = addDeleteCell(name="Enter Information")
+        F = addDeleteRow(name="Enter Information")
         F.edit()
         dbsrv.deleteRow(table_name, F.colname.value, F.colvalue.value)
         drawStatus(scr, "Row Deleted")
@@ -537,8 +522,22 @@ def cb_SQL(scr):
     curses.raw() 
     try:
         sql_results = dbsrv.exec_sql(sql)
+        table_name = dbsrv.getTable()
+        first_row = dbsrv.getColumnNames(table_name, True)
+
+        rows = []
+        for row in sql_results:
+            r = []
+            for col in row:
+                r.append(col)
+            rows.append(r)
+        fp = open('outfile', 'w')
+        print >>fp, tabulate(rows, headers=first_row)
+        fp.close()
+        with open('outfile') as f:
+            content = f.readlines()
+        drawData(scr, content)
         drawStatus(scr, "")
-        drawData(scr, sql_results)
     except:
         drawStatus(scr, "SQL Failed")
         drawData(scr, ("", "SQL failed"))
