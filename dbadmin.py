@@ -313,7 +313,7 @@ class tableNameForm(npyscreen.Popup):
 class tableColForm(npyscreen.Popup):
     def create(self):
         self.colname = self.add(npyscreen.TitleText, name='ColName')
-        self.coltype = self.add(npyscreen.TitleSelectOne, scroll_exit=True, max_height=3, name='ColType1', values = ['int', 'varchar', 'timestamp']) 
+        self.coltype = self.add(npyscreen.TitleSelectOne, scroll_exit=True, max_height=3, name='ColType1', values = ['int', 'varchar']) 
         self.size = self.add(npyscreen.TitleText, name='Size')
         self.ai = self.add(npyscreen.TitleMultiSelect, value = [], name="Params", values = ["Primary Key", "Auto Increment"], scroll_exit=True)       
 
@@ -340,8 +340,6 @@ def createTable(*args):
             col_type = 'Integer'
         elif col_type[0] == 1:
             col_type = 'String'
-        elif col_type[0] == 2:
-            col_type = 'DateTime'
         col.append(col_type)
         ai = F.ai.value
         for each in ai:
